@@ -220,15 +220,19 @@ const dataProvider = (client: GraphQLClient) => {
     },
     create: async ({ resource, variables, metaData, requestHeaders }: GetManyArgs) => {
       const singularResource = pluralize.singular(resource);
-      const camelName = `${toCamelCase(resource)}Input`;
+      const camelResource = camelCase(`create-${singularResource}`);
+      
+      const operation = metaData?.operation ?? camelResource;
+      const typeInput = `${toCamelCase(camelResource)}Input`;
 
-      const operation = resource;
+      console.log('create resource', resource, typeInput, camelResource)
+
       const { query: mutation, variables: gqlVariables } = gql.mutation({
         operation,
         variables: {
           input: {
             value: { ...variables },
-            type: `${camelName}`,
+            type: `${typeInput}`,
             required: true,
           },
         },
@@ -249,9 +253,10 @@ const dataProvider = (client: GraphQLClient) => {
     },
     createMany: async ({ resource, variables, metaData, requestHeaders }: GetManyArgs) => {
       const singularResource = pluralize.singular(resource);
-      const camelName = `${toCamelCase(resource)}Input`;
-
-      const operation = resource;
+      const camelResource = camelCase(`create-${singularResource}`);
+      
+      const operation = metaData?.operation ?? camelResource;
+      const typeInput = `${toCamelCase(camelResource)}Input`;
 
       const onGql = (vars: Record<string, any>) => {
         const { query: mutation, variables: gqlVariables } = gql.mutation({
@@ -259,7 +264,7 @@ const dataProvider = (client: GraphQLClient) => {
           variables: {
             input: {
               value: { ...vars },
-              type: `${camelName}`,
+              type: `${typeInput}`,
               required: true,
             },
           },
@@ -293,8 +298,10 @@ const dataProvider = (client: GraphQLClient) => {
     },
     update: async ({ resource, id, variables, metaData, requestHeaders }: GetManyArgs) => {
       const singularResource = pluralize.singular(resource);
-      const camelName = `${toCamelCase(resource)}Input`;
-      const operation = resource;
+      const camelResource = camelCase(`update-${singularResource}`);
+      
+      const operation = metaData?.operation ?? camelResource;
+      const typeInput = `${toCamelCase(camelResource)}Input`;
 
       const { query: mutation, variables: gqlVariables } = gql.mutation({
         operation,
@@ -306,7 +313,7 @@ const dataProvider = (client: GraphQLClient) => {
           },
           input: {
             value: { ...variables },
-            type: `${camelName}`,
+            type: `${typeInput}`,
             required: true,
           },
         },
@@ -325,9 +332,10 @@ const dataProvider = (client: GraphQLClient) => {
     },
     updateMany: async ({ resource, ids, variables, metaData, requestHeaders }: GetManyArgs) => {
       const singularResource = pluralize.singular(resource);
-      const camelName = `${toCamelCase(resource)}Input`;
-
-      const operation = resource;
+      const camelResource = camelCase(`update-${singularResource}`);
+      
+      const operation = metaData?.operation ?? camelResource;
+      const typeInput = `${toCamelCase(camelResource)}Input`;
 
       const onGql = (value: string) => {
         const { query: mutation, variables: gqlVariables } = gql.mutation({
@@ -340,7 +348,7 @@ const dataProvider = (client: GraphQLClient) => {
             },
             input: {
               value: { ...variables },
-              type: `${camelName}`,
+              type: `${typeInput}`,
               required: true,
             },
           },
@@ -372,9 +380,9 @@ const dataProvider = (client: GraphQLClient) => {
     },
     deleteOne: async ({ resource, id, metaData, requestHeaders }: GetManyArgs) => {
       const singularResource = pluralize.singular(resource);
-      const camelName = `${toCamelCase(resource)}Input`;
-      const operation = resource;
-
+      const camelResource = camelCase(`delete-${singularResource}`);
+      
+      const operation = metaData?.operation ?? camelResource;
       const { query: mutation, variables } = gql.mutation({
         operation,
         variables: {
@@ -401,9 +409,9 @@ const dataProvider = (client: GraphQLClient) => {
     },
     deleteMany: async ({ resource, ids, variables, metaData, requestHeaders }: GetManyArgs) => {
       const singularResource = pluralize.singular(resource);
-      const camelName = `${toCamelCase(resource)}Input`;
-
-      const operation = resource;
+      const camelResource = camelCase(`delete-${singularResource}`);
+      
+      const operation = metaData?.operation ?? camelResource;
 
       const onGql = (value: string) => {
         const { query: mutation, variables: gqlVariables } = gql.mutation({

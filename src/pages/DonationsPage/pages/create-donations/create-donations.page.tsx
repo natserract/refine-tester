@@ -12,7 +12,6 @@ const CreateDonations = () => {
   const history = useHistory()
 
   const { formProps, saveButtonProps } = useForm({
-    resource: 'createDonation',
     metaData: {
       fields: [
         'id',

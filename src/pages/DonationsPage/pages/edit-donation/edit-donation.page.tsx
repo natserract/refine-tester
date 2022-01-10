@@ -11,13 +11,7 @@ import { useHistory } from 'react-router-dom'
 const EditDonation = () => {
   const history = useHistory()
 
-  // Use form, in edit, do fetch from resource first
-  // But the problems here's, updateDonation its not a query that's a mutation for update
-  // For get donation, use `donation(id:..)`. So bad.
-  const resourceRef = useRef('donation');
   const { formProps, saveButtonProps, queryResult } = useForm({
-    resource: resourceRef.current,
-    action: "edit",
     metaData: {
       fields: [
         'id',
@@ -40,17 +34,8 @@ const EditDonation = () => {
   const currentData = queryResult?.data?.data;
 
   useEffect(() => {
-    setTimeout(() => {
-      // It's so tricky. :(
-      resourceRef.current = 'updateDonation';
-    }, 100)
-  }, [])
-
-  useEffect(() => {
-    setTimeout(() => {
-      console.log('resourceRef', resourceRef.current)
-    }, 200)
-  }, [])
+    console.log('currentData', currentData)
+  }, [currentData])
 
   return (
     <Edit saveButtonProps={saveButtonProps}>

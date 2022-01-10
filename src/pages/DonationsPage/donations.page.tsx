@@ -333,7 +333,6 @@ const JobsPage = () => {
                   />
                   <DeleteButton
                     hideText
-                    resourceName="deleteDonation"
                     mutationMode="optimistic"
                     metaData={{
                       fields: [

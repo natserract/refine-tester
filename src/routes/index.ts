@@ -4,7 +4,6 @@ import DonationsPage from 'pages/DonationsPage/donations.page'
 import CreateDonations from 'pages/DonationsPage/pages/create-donations/create-donations.page'
 import EditDonation from 'pages/DonationsPage/pages/edit-donation/edit-donation.page'
 import ViewDonation from 'pages/DonationsPage/pages/view-donation/view-donation.page'
-import EventsPage from 'pages/EventsPage/events.page'
 
 interface IResource extends IResourceItem, ResourceProps {}
 
