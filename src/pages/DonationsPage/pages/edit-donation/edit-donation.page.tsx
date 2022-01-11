@@ -5,6 +5,8 @@ import {
   Input,
   Select,
   useForm,
+  useMany,
+  useSelect,
 } from "@pankod/refine";
 import { useHistory } from 'react-router-dom'
 
@@ -30,6 +32,40 @@ const EditDonation = () => {
       history.push('/donations');
     }
   });
+
+  const responseTenantMany = useMany({
+    resource: 'tenantPage',
+    ids: [],
+    metaData: {
+      fields: [
+        {
+          tenants: [
+            'id',
+          ]
+        }
+      ]
+    }
+  })
+
+  // # Implement data look up
+  const { selectProps } = useSelect({
+    resource: 'tenantPage',
+    metaData: {
+      isCustom: true,
+      offsetField: 'tenants',
+      fields: [
+        {
+          tenants: [
+            'id',
+          ]
+        }
+      ]
+    },
+  });
+
+  useEffect(() => {
+    console.log('responseTenantMany', responseTenantMany)
+  }, [responseTenantMany])
 
   const currentData = queryResult?.data?.data;
 
@@ -127,7 +163,11 @@ const EditDonation = () => {
             },
           ]}
         >
-          <Input readOnly />
+          {/* <Input readOnly /> */}
+          <Select
+            style={{ minWidth: 200 }}
+            {...selectProps}
+          />
         </Form.Item>
       </Form>
     </Edit>

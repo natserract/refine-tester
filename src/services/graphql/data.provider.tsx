@@ -4,30 +4,45 @@ import * as gql from "gql-query-builder";
 import pluralize from "pluralize";
 import camelCase from "camelcase";
 import { GetListArgs, GetManyArgs } from "./types";
+import setWith from 'lodash.setwith'
 
 type RecordRow = Record<string, any>
 
 function iterToObject<T>(
   items: T[] | undefined,
-  keyProp: string | ((v: any) => string),
+  keyProp: string,
   keyValue?: string,
-) {
-  const objects: { [key: string]: T } = {}
+) {  
+  let objects: { [key: string]: T } = {}
 
   if (items && items.length) {
     items.map((val: RecordRow) => {
-      objects[
-        typeof keyProp === 'string' ?
-          val[keyProp] :
-          keyProp(val)
-      ] =
-        keyValue ?
-          val[keyValue] :
-          val
+      let objKeys: string[] = []
+      
+      // Check if have nested field
+      if (String(val[keyProp]).includes(',')) {
+        objKeys = String(val[keyProp]).split(',');
+      } else {
+        objKeys = [val[keyProp]]
+      }
+
+      // Mutable sets values for objects
+      // Support for nested fields, or one field
+      setWith(objects,
+        objKeys,
+        keyValue ? val[keyValue] : val,
+        Object)
     })
   }
 
   if (!Object.keys(objects).length) return undefined
+
+  // Prisma: Argument orderBy of type DonationOrderByWithRelationInput needs exactly one argument
+  // Remove object key, get from the last value
+  if (Object.keys(objects).length > 1) {
+    const key = Object.keys(objects)[0]
+    delete objects[key]
+  }
 
   return objects
 }
@@ -91,6 +106,7 @@ const dataProvider = (client: GraphQLClient) => {
       requestHeaders
     }: GetListArgs) => {
       console.log('getList called')
+      console.log('getList metaData', metaData);
 
       const current = pagination?.current || 1; // as page = 1
       const pageSize = pagination?.pageSize || 10; // as ITEMS_PER_PAGE as limit
@@ -128,23 +144,27 @@ const dataProvider = (client: GraphQLClient) => {
 
       console.log('variables', metaData?.variables)
 
+      const queryVariables = {
+        input: {
+          value: {
+            ...metaData?.variables,
+            ...sortBy && {
+              sort: JSON.stringify(sortBy)
+            },
+            ...$where && {
+              filter: JSON.stringify($where),
+            },
+            start: (current - 1) * pageSize || 1,
+            limit: pageSize,
+          },
+          type: `${camelName}`,
+        }
+      }
+
       const { query, variables } = gql.query({
         operation,
-        variables: {
-          input: {
-            value: {
-              ...metaData?.variables,
-              ...sortBy && {
-                sort: JSON.stringify(sortBy)
-              },
-              ...$where && {
-                filter: JSON.stringify($where),
-              },
-              start: (current - 1) * pageSize || 1,
-              limit: pageSize,
-            },
-            type: `${camelName}`,
-          }
+        ...(!metaData?.isCustom) && {
+          variables: { ...queryVariables }
         },
         fields: [...metaData?.fields!!],
       })
@@ -155,12 +175,19 @@ const dataProvider = (client: GraphQLClient) => {
         variables,
         requestHeaders ?? undefined
       );
-      console.log('response', response)
 
-      return {
-        data: response[operation],
-        total: response[operation].length,
-      };
+      const results = {
+        data: metaData?.offsetField ?
+          response[operation][metaData?.offsetField] :
+          response[operation],
+        total: metaData?.offsetField ?
+          response[operation][metaData?.offsetField].length :
+          response[operation].length
+      }
+
+      console.log('results', results)
+
+      return { ...results };
 
     },
     getMany: async ({ resource, metaData, requestHeaders }: GetManyArgs) => {
@@ -221,7 +248,7 @@ const dataProvider = (client: GraphQLClient) => {
     create: async ({ resource, variables, metaData, requestHeaders }: GetManyArgs) => {
       const singularResource = pluralize.singular(resource);
       const camelResource = camelCase(`create-${singularResource}`);
-      
+
       const operation = metaData?.operation ?? camelResource;
       const typeInput = `${toCamelCase(camelResource)}Input`;
 
@@ -254,7 +281,7 @@ const dataProvider = (client: GraphQLClient) => {
     createMany: async ({ resource, variables, metaData, requestHeaders }: GetManyArgs) => {
       const singularResource = pluralize.singular(resource);
       const camelResource = camelCase(`create-${singularResource}`);
-      
+
       const operation = metaData?.operation ?? camelResource;
       const typeInput = `${toCamelCase(camelResource)}Input`;
 
@@ -299,7 +326,7 @@ const dataProvider = (client: GraphQLClient) => {
     update: async ({ resource, id, variables, metaData, requestHeaders }: GetManyArgs) => {
       const singularResource = pluralize.singular(resource);
       const camelResource = camelCase(`update-${singularResource}`);
-      
+
       const operation = metaData?.operation ?? camelResource;
       const typeInput = `${toCamelCase(camelResource)}Input`;
 
@@ -333,7 +360,7 @@ const dataProvider = (client: GraphQLClient) => {
     updateMany: async ({ resource, ids, variables, metaData, requestHeaders }: GetManyArgs) => {
       const singularResource = pluralize.singular(resource);
       const camelResource = camelCase(`update-${singularResource}`);
-      
+
       const operation = metaData?.operation ?? camelResource;
       const typeInput = `${toCamelCase(camelResource)}Input`;
 
@@ -381,7 +408,7 @@ const dataProvider = (client: GraphQLClient) => {
     deleteOne: async ({ resource, id, metaData, requestHeaders }: GetManyArgs) => {
       const singularResource = pluralize.singular(resource);
       const camelResource = camelCase(`delete-${singularResource}`);
-      
+
       const operation = metaData?.operation ?? camelResource;
       const { query: mutation, variables } = gql.mutation({
         operation,
@@ -410,7 +437,7 @@ const dataProvider = (client: GraphQLClient) => {
     deleteMany: async ({ resource, ids, variables, metaData, requestHeaders }: GetManyArgs) => {
       const singularResource = pluralize.singular(resource);
       const camelResource = camelCase(`delete-${singularResource}`);
-      
+
       const operation = metaData?.operation ?? camelResource;
 
       const onGql = (value: string) => {

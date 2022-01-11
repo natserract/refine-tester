@@ -1,8 +1,20 @@
-import { CrudFilters, useCreate, useCreateMany, useDelete, useDeleteMany, useList, useMany, useOne, useTable, useUpdate } from "@pankod/refine"
+import {
+  CrudFilters,
+  useCreate,
+  useCreateMany,
+  useDelete,
+  useDeleteMany,
+  useList,
+  useMany,
+  useOne,
+  useTable,
+  useUpdate
+} from "@pankod/refine"
 import {
   List,
   Table,
   Space,
+  TextField,
   EditButton,
   ShowButton,
   Radio,
@@ -24,6 +36,8 @@ import {
   Form,
   Button,
   DatePicker,
+  useEditableTable,
+  SaveButton,
 } from "@pankod/refine";
 import { useEffect, useRef } from "react"
 
@@ -240,13 +254,29 @@ const JobsPage = () => {
   //   })
   // }, [])
 
-  const { tableProps, sorter, searchFormProps, filters } = useTable({
+  const {
+    tableProps,
+    formProps,
+    sorter,
+    searchFormProps,
+    isEditing,
+    saveButtonProps,
+    cancelButtonProps,
+    editButtonProps,
+    setEditId,
+  } = useEditableTable({
     resource: 'donations',
     metaData: {
       fields: [
         'id',
         'donation_for_type',
-        'amount'
+        'amount',
+        {
+          user: [
+            'id',
+            'name'
+          ]
+        }
       ]
     },
     onSearch: (params: Record<string, any>) => {
@@ -272,6 +302,14 @@ const JobsPage = () => {
     }
   })
 
+  // const { data, isFetching } = useMany({
+  //   resource: '',
+  // });
+
+  useEffect(() => {
+    console.log('tableProps', tableProps)
+  }, [tableProps])
+
   return (
     <Row gutter={[16, 16]}>
       <Col lg={6} xs={24}>
@@ -281,71 +319,157 @@ const JobsPage = () => {
       </Col>
       <Col lg={18} xs={24}>
         <List>
-          <Table
-            {...tableProps}
-            rowKey="id"
-            pagination={{
-              ...tableProps.pagination,
-              current: 1,
-              pageSize: 5,
-              pageSizeOptions: ['Hello'],
-              showLessItems: true,
-              responsive: true,
-            }}
-          >
-            <Table.Column
-              dataIndex="id"
-              title="ID"
-              sorter
-              defaultSortOrder={getDefaultSortOrder("id", sorter)}
-            />
-            <Table.Column
-              dataIndex="donation_for_type"
-              title="Donation for types"
-              sorter={{ multiple: 2 }}
-              defaultSortOrder={getDefaultSortOrder("donation_for_type", sorter)}
-              filterDropdown={(props: FilterDropdownProps) => (
-                <FilterDropdown {...props}>
-                  <Input />
-                </FilterDropdown>
-              )}
-            />
-            <Table.Column
-              dataIndex="amount"
-              title="Amount"
-              sorter={{ multiple: 1 }}
-              defaultSortOrder={getDefaultSortOrder("amount", sorter)}
-            />
-            <Table.Column
-              dataIndex="actions"
-              title="Actions"
-              render={(_, record: any) => (
-                <Space>
-                  <EditButton
-                    hideText
-                    size="small"
-                    recordItemId={record.id}
-                  />
-                  <ShowButton
-                    hideText
-                    size="small"
-                    recordItemId={record.id}
-                  />
-                  <DeleteButton
-                    hideText
-                    mutationMode="optimistic"
-                    metaData={{
-                      fields: [
-                        'id'
-                      ]
-                    }}
-                    size="small"
-                    recordItemId={record.id}
-                  />
-                </Space>
-              )}
-            />
-          </Table>
+          <Form {...formProps}>
+            <Table
+              {...tableProps}
+              rowKey="id"
+              pagination={{
+                ...tableProps.pagination,
+                current: 1,
+                pageSize: 5,
+                pageSizeOptions: ['Hello'],
+                showLessItems: true,
+                responsive: true,
+              }}
+              onRow={(record: any) => ({
+                onClick: (event: any) => {
+                  if (event.target.nodeName === "TD") {
+                    setEditId && setEditId(record.id);
+                  }
+                }
+              })}
+            >
+              <Table.Column
+                dataIndex="id"
+                title="ID"
+                sorter
+                defaultSortOrder={getDefaultSortOrder("id", sorter)}
+              />
+              <Table.Column
+                dataIndex="donation_for_type"
+                title="Donation for types"
+                sorter={{ multiple: 2 }}
+                defaultSortOrder={getDefaultSortOrder("donation_for_type", sorter)}
+                filterDropdown={(props: FilterDropdownProps) => (
+                  <FilterDropdown {...props}>
+                    <Input />
+                  </FilterDropdown>
+                )}
+                render={(value, record: any) => {
+                  if (isEditing(record?.id)) {
+                    console.log('select value', value)
+                    return (
+                      <Form.Item
+                        name="donation_for_type"
+                        style={{ margin: 0 }}
+                      >
+                        <Select
+                          defaultValue={value}
+                          options={[
+                            {
+                              label: "Programs",
+                              value: "programs",
+                            },
+                            {
+                              label: "Events",
+                              value: "events",
+                            },
+                          ]}
+                        />
+                      </Form.Item>
+                    );
+                  }
+                  return <TextField value={value} />;
+                }}
+              />
+              <Table.Column
+                dataIndex="amount"
+                title="Amount"
+                sorter={{ multiple: 1 }}
+                defaultSortOrder={getDefaultSortOrder("amount", sorter)}
+                render={(value, record: any) => {
+                  if (isEditing(record?.id)) {
+                    return (
+                      <Form.Item
+                        name="amount"
+                        style={{ margin: 0 }}
+                        getValueFromEvent={(event) => +event?.target?.value}
+                      >
+                        <Input defaultValue={value} />
+                      </Form.Item>
+                    );
+                  }
+                  return <TextField value={value} />;
+                }}
+              />
+              <Table.Column
+                dataIndex={["user", "name"]}
+                title="Name"
+                sorter={{ multiple: 1 }}
+                defaultSortOrder={getDefaultSortOrder("name", sorter)}
+              />
+              <Table.Column
+                dataIndex="actions"
+                title="Actions"
+                render={(_, record: any) => {
+                  const renderEditable = () => {
+                    if (isEditing(record?.id)) {
+                      return (
+                        <>
+                          <SaveButton
+                            {...saveButtonProps}
+                            size="small"
+                          />
+                          <Button
+                            {...cancelButtonProps}
+                            size="small"
+                          >
+                            Cancel
+                        </Button>
+                        </>
+                      )
+                    }
+
+                    return (
+                      <>
+                        <EditButton
+                          {...editButtonProps(record.id)}
+                          size="small"
+                        />
+                      </>
+                    )
+                  }
+
+                  return (
+                    <Space>
+                      <EditButton
+                        hideText
+                        size="small"
+                        recordItemId={record.id}
+                      />
+                      <ShowButton
+                        hideText
+                        size="small"
+                        recordItemId={record.id}
+                      />
+                      <DeleteButton
+                        hideText
+                        mutationMode="optimistic"
+                        metaData={{
+                          fields: [
+                            'id'
+                          ]
+                        }}
+                        size="small"
+                        recordItemId={record.id}
+                      />
+                      {renderEditable()}
+                    </Space>
+                  )
+                }}
+              />
+            </Table>
+          </Form>
         </List>
       </Col>
     </Row>
