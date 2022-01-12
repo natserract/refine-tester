@@ -2,8 +2,8 @@ import { Refine } from '@pankod/refine'
 import routerProvider from '@pankod/refine-react-router'
 
 import '@pankod/refine/dist/styles.min.css'
-// import dataProvider from '@pankod/refine-graphql'
 import dataProvider from 'services/graphql/data.provider';
+import { AllContextProvider as AppProvider } from './store';
 
 import {
   Title,
@@ -18,7 +18,7 @@ const gqlDataProvider = dataProvider(client)
 
 function App() {
   return (
-    <Refine
+    <AppProvider
       routerProvider={routerProvider}
       dataProvider={gqlDataProvider as any}
       Title={Title}
