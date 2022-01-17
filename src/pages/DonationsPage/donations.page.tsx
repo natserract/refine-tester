@@ -4,13 +4,8 @@ import {
   useCreateMany,
   useDelete,
   useDeleteMany,
+  useUpdate,
   useList,
-  useMany,
-  useOne,
-  useTable,
-  useUpdate
-} from "@pankod/refine"
-import {
   List,
   Table,
   Space,
@@ -38,8 +33,13 @@ import {
   DatePicker,
   useEditableTable,
   SaveButton,
+  Checkbox,
+  RefreshButton,
+  useCan
 } from "@pankod/refine";
-import { useEffect, useRef } from "react"
+import useRefresh from "hooks/useRefresh";
+import { useEffect, useRef, useState } from "react"
+import { useHistory } from 'react-router-dom'
 
 const { RangePicker } = DatePicker;
 
@@ -91,6 +91,11 @@ interface IEvent {
     title: string;
   }[]
 }
+
+type SelectedItem = {
+  selectedItem: 'bulk_actions' | 'edit' | 'trash'
+}
+
 
 const JobsPage = () => {
   // Query: getList -> Donation
@@ -264,6 +269,8 @@ const JobsPage = () => {
     cancelButtonProps,
     editButtonProps,
     setEditId,
+    queryResult,
+    tableQueryResult,
   } = useEditableTable({
     resource: 'donations',
     metaData: {
@@ -299,16 +306,65 @@ const JobsPage = () => {
       )
 
       return filters
-    }
+    },
   })
 
-  // const { data, isFetching } = useMany({
-  //   resource: '',
-  // });
+  const history = useHistory()
+  const refreshSilent = useRefresh(history, '/donations');
+
 
   useEffect(() => {
-    console.log('tableProps', tableProps)
-  }, [tableProps])
+    // console.log('form', formProps.onF form.getFieldValue('checked_item'))
+  }, [formProps])
+
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>(
+    [],
+  );
+
+  const onSelectChange = (selectedRowKeys: React.Key[]) => {
+    setSelectedRowKeys(selectedRowKeys);
+  };
+
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: onSelectChange,
+  };
+
+  const onBulkActionSubmitted = (value: SelectedItem) => {
+    const isHasItems = selectedRowKeys && selectedRowKeys.length
+
+    if (isHasItems) {
+      switch (value.selectedItem) {
+        case 'trash': {
+          deleteManyDonation({
+            resource: 'donation',
+            ids: [String(selectedRowKeys)],
+            metaData: {
+              fields: [
+                'id'
+              ]
+            },
+            mutationMode: "optimistic",
+          })
+
+          // This is for temporary solution for
+          // Refreshing data without reload,
+          // Because before, i try to use (queryResult & tableQueryResult).refetch() not work
+          // Solutions: (Nope!)
+          // refreshSilent()
+          // queryResult?.refetch()
+          // tableQueryResult.refetch()
+          // 
+          window.location.reload();
+
+          console.log('Submitted values', value, selectedRowKeys, tableQueryResult.isRefetching)
+          break;
+        }
+        default:
+          break;
+      }
+    }
+  }
 
   return (
     <Row gutter={[16, 16]}>
@@ -318,11 +374,43 @@ const JobsPage = () => {
         </Card>
       </Col>
       <Col lg={18} xs={24}>
-        <List>
+        <List
+          pageHeaderProps={{
+            subTitle: (
+              <Form onFinish={onBulkActionSubmitted} layout="inline">
+                <Form.Item name="selectedItem" initialValue="bulk_actions">
+                  <Select
+                    options={[
+                      {
+                        label: "Bulk Actions",
+                        value: "bulk_actions",
+                      },
+                      {
+                        label: "Edit",
+                        value: "edit",
+                      },
+                      {
+                        label: "Move to trash",
+                        value: "trash",
+                      }
+                    ]}
+                  />
+                </Form.Item>
+
+                <Form.Item>
+                  <Button type="primary" htmlType="submit">
+                    Apply
+                </Button>
+                </Form.Item>
+              </Form>
+            ),
+          }}
+        >
           <Form {...formProps}>
             <Table
               {...tableProps}
               rowKey="id"
+              rowSelection={rowSelection}
               pagination={{
                 ...tableProps.pagination,
                 current: 1,
@@ -357,7 +445,6 @@ const JobsPage = () => {
                 )}
                 render={(value, record: any) => {
                   if (isEditing(record?.id)) {
-                    console.log('select value', value)
                     return (
                       <Form.Item
                         name="donation_for_type"

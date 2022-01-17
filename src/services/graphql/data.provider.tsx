@@ -453,6 +453,8 @@ const dataProvider = (client: GraphQLClient) => {
           fields: metaData?.fields,
         });
 
+        console.log('deleteMany mutation', mutation)
+
         return {
           mutation,
           gqlVariables
