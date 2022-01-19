@@ -37,8 +37,10 @@ import {
   RefreshButton,
   useCan
 } from "@pankod/refine";
+import { BaseRecord } from "@pankod/refine/dist/interfaces";
+import { ColumnProps, ColumnsType, ColumnType } from "antd/lib/table";
 import useRefresh from "hooks/useRefresh";
-import { useEffect, useRef, useState } from "react"
+import { createContext, useEffect, useMemo, useRef, useState } from "react"
 import { useHistory } from 'react-router-dom'
 
 const { RangePicker } = DatePicker;
@@ -50,6 +52,20 @@ const searchConfig = {
   searchAmount: 'amount',
   donationType: 'donation_for_type',
 }
+
+const EditableContext = createContext(null);
+
+const EditableRow = ({ index, ...props }: any) => {
+  const [form] = Form.useForm();
+
+  return (
+    <Form form={form} component={false}>
+      <EditableContext.Provider value={form as any}>
+        <tr {...props} />
+      </EditableContext.Provider>
+    </Form>
+  );
+};
 
 const Filter: React.FC<{ formProps: FormProps }> = ({ formProps }) => {
   return (
@@ -309,6 +325,7 @@ const JobsPage = () => {
     },
   })
 
+
   const history = useHistory()
   const refreshSilent = useRefresh(history, '/donations');
 
@@ -366,6 +383,236 @@ const JobsPage = () => {
     }
   }
 
+  const [stateSource, setStateSource] = useState<any>([]);
+  const ref = useRef(null);
+
+  const handleAdd = () => {
+    const dataSource = tableProps.dataSource as any;
+
+    // Not pure
+
+    // tableProps.dataSource = [] as any
+
+    console.log('tableQueryResult.data!!.data', tableQueryResult.data!!.data)
+    console.log('tableProps', tableProps)
+    setStateSource([
+      {
+        "id": "1029",
+        "donation_for_type": " ",
+        "amount": 50,
+        "user": {
+          "id": 515,
+          "name": ""
+        },
+        "isInlineAdd": true,
+      },
+      ...dataSource as any,
+    ]);
+
+    setEditId && setEditId("1029");
+    console.log('dataSource', dataSource)
+
+    // tableQueryResult.data!!.data[0] = {
+    //   "id": 192 as any,
+    //   "donation_for_type": "events",
+    //   "amount": 50,
+    //   "user": {
+    //     "id": 515,
+    //     "name": "Testing"
+    //   }
+    // }
+
+    // tableQueryResult.data!!.data = [{
+    //   "id": '192',
+    //   "donation_for_type": "events",
+    //   "amount": 50,
+    //   "user": {
+    //     "id": 515,
+    //     "name": "Testing"
+    //   }
+    // }]
+
+    // console.log('tableProps', tableProps)
+  }
+
+  const mergedColumns = tableProps?.columns?.map((col) => {
+    console.log('KEYS', col.key)
+    // if (!col.) {
+    //   return col;
+    // }
+
+    return {
+      ...col,
+      onCell: (record: any) => ({
+        record,
+        inputType: col.key === "age" ? "number" : "text",
+        dataIndex: col.key,
+        title: col.title,
+        editing: isEditing(record)
+      })
+    };
+  });
+
+  useEffect(() => {
+    setStateSource(tableProps.dataSource as any)
+  }, [tableProps.dataSource])
+
+  useEffect(() => {
+    console.log('stateSource', stateSource, tableProps)
+  }, [stateSource, tableProps?.columns])
+
+  const tableColumns = useMemo(() => {
+    const columns = [
+      {
+        title: "ID",
+        dataIndex: "id",
+        key: "id",
+        sorter,
+        defaultSortOrder: getDefaultSortOrder("id", sorter)
+      },
+      {
+        title: "Donation for types",
+        dataIndex: "donation_for_type",
+        key: "donation_for_type",
+        sorter: {
+          multiple: 2
+        },
+        defaultSortOrder: getDefaultSortOrder("donation_for_type", sorter),
+        filterDropdown: (props: FilterDropdownProps) => (
+          <FilterDropdown {...props}>
+            <Input />
+          </FilterDropdown>
+        ),
+        render: (value: any, record: any) => {
+          console.log('recorded', isEditing(record?.id))
+
+          if (isEditing(record?.id)) {
+            return (
+              <Form.Item
+                name="donation_for_type"
+                style={{ margin: 0 }}
+              >
+                <Select
+                  defaultValue={value}
+                  options={[
+                    {
+                      label: "Programs",
+                      value: "programs",
+                    },
+                    {
+                      label: "Events",
+                      value: "events",
+                    },
+                  ]}
+                />
+              </Form.Item>
+            );
+          }
+          return <TextField value={value} />;
+        }
+      },
+      {
+        title: "Amount",
+        dataIndex: "amount",
+        key: "amount",
+        sorter: {
+          multiple: 1
+        },
+        defaultSortOrder: getDefaultSortOrder("amount", sorter),
+        render: (value: any, record: any) => {
+          console.log('value render', value, record, isEditing(record?.id))
+
+          if (isEditing(record?.id)) {
+            return (
+              <Form.Item
+                name="amount"
+                style={{ margin: 0 }}
+                getValueFromEvent={(event) => +event?.target?.value}
+              >
+                <Input defaultValue={value} />
+              </Form.Item>
+            );
+          }
+          return <TextField value={value} />;
+        }
+      },
+      {
+        dataIndex: ["user", "name"],
+        title: 'Name',
+        sorter: {
+          multiple: 1
+        },
+        defaultSortOrder: getDefaultSortOrder("name", sorter),
+      },
+      {
+        dataIndex: "actions",
+        title: "Actions",
+        render: (_: any, record: any) => {
+          const renderEditable = () => {
+            if (isEditing(record?.id)) {
+              return (
+                <>
+                  <SaveButton
+                    {...saveButtonProps}
+                    size="small"
+                  />
+                  <Button
+                    {...cancelButtonProps}
+                    size="small"
+                  >
+                    Cancel
+                </Button>
+                </>
+              )
+            }
+
+            return (
+              <>
+                <EditButton
+                  {...editButtonProps(record.id)}
+                  size="small"
+                />
+              </>
+            )
+          }
+
+          return (
+            <Space>
+              <EditButton
+                hideText
+                size="small"
+                recordItemId={record.id}
+              />
+              <ShowButton
+                hideText
+                size="small"
+                recordItemId={record.id}
+              />
+              <DeleteButton
+                hideText
+                mutationMode="optimistic"
+                metaData={{
+                  fields: [
+                    'id'
+                  ]
+                }}
+                size="small"
+                recordItemId={record.id}
+              />
+              {renderEditable()}
+            </Space>
+          )
+        }
+      }
+    ]
+
+    return columns;
+  }, [])
+
+  const handleChange = () => {
+    console.log('stateSource change')
+  }
+
   return (
     <Row gutter={[16, 16]}>
       <Col lg={6} xs={24}>
@@ -377,38 +624,45 @@ const JobsPage = () => {
         <List
           pageHeaderProps={{
             subTitle: (
-              <Form onFinish={onBulkActionSubmitted} layout="inline">
-                <Form.Item name="selectedItem" initialValue="bulk_actions">
-                  <Select
-                    options={[
-                      {
-                        label: "Bulk Actions",
-                        value: "bulk_actions",
-                      },
-                      {
-                        label: "Edit",
-                        value: "edit",
-                      },
-                      {
-                        label: "Move to trash",
-                        value: "trash",
-                      }
-                    ]}
-                  />
-                </Form.Item>
+              <>
+                <Form onFinish={onBulkActionSubmitted} layout="inline">
+                  <Form.Item name="selectedItem" initialValue="bulk_actions">
+                    <Select
+                      options={[
+                        {
+                          label: "Bulk Actions",
+                          value: "bulk_actions",
+                        },
+                        {
+                          label: "Edit",
+                          value: "edit",
+                        },
+                        {
+                          label: "Move to trash",
+                          value: "trash",
+                        }
+                      ]}
+                    />
+                  </Form.Item>
 
-                <Form.Item>
-                  <Button type="primary" htmlType="submit">
-                    Apply
+                  <Form.Item>
+                    <Button type="primary" htmlType="submit">
+                      Apply
+                    </Button>
+                  </Form.Item>
+                </Form>
+
+                <Button onClick={handleAdd}>
+                  Add New Data
                 </Button>
-                </Form.Item>
-              </Form>
+              </>
             ),
           }}
         >
           <Form {...formProps}>
             <Table
               {...tableProps}
+              dataSource={stateSource}
               rowKey="id"
               rowSelection={rowSelection}
               pagination={{
@@ -419,12 +673,14 @@ const JobsPage = () => {
                 showLessItems: true,
                 responsive: true,
               }}
+              onChange={handleChange}
               onRow={(record: any) => ({
                 onClick: (event: any) => {
                   if (event.target.nodeName === "TD") {
+                    console.log('Edit', event, record)
                     setEditId && setEditId(record.id);
                   }
-                }
+                },
               })}
             >
               <Table.Column
@@ -444,6 +700,8 @@ const JobsPage = () => {
                   </FilterDropdown>
                 )}
                 render={(value, record: any) => {
+                  console.log('record saved', value, record)
+
                   if (isEditing(record?.id)) {
                     return (
                       <Form.Item
@@ -498,23 +756,60 @@ const JobsPage = () => {
               <Table.Column
                 dataIndex="actions"
                 title="Actions"
-                render={(_, record: any) => {
+                render={(value: any, record: any) => {
+                  // TODO: Handle click if isInlineAdd
+                  const renderInlineAddBtn = () => {
+                    const handleCancel = () => {
+                      const key = "1029";
+                      setStateSource(stateSource.filter((item: any) => item.id !== key))
+                    }
+
+                    // TODO: How to get values
+                    // And save a mutation
+                    const handleSave = (event: any) => {
+                      // console.log('record saved', value, event)
+                    }
+
+                    return (
+                      <>
+                        <SaveButton
+                          {...saveButtonProps}
+                          size="small"
+                          onClick={handleSave}
+                        />
+
+                        <Button
+                          {...cancelButtonProps}
+                          size="small"
+                          onClick={handleCancel}
+                        >
+                          Cancel
+                      </Button>
+                      </>
+                    )
+                  }
+
+                  const renderDefaultBtn = () => {
+                    return (
+                      <>
+                        <SaveButton
+                          {...saveButtonProps}
+                          size="small"
+                        />
+
+                        <Button
+                          {...cancelButtonProps}
+                          size="small"
+                        >
+                          Cancel
+                        </Button>
+                      </>
+                    )
+                  }
+
                   const renderEditable = () => {
                     if (isEditing(record?.id)) {
-                      return (
-                        <>
-                          <SaveButton
-                            {...saveButtonProps}
-                            size="small"
-                          />
-                          <Button
-                            {...cancelButtonProps}
-                            size="small"
-                          >
-                            Cancel
-                        </Button>
-                        </>
-                      )
+                      return record.isInlineAdd ? renderInlineAddBtn() : renderDefaultBtn();
                     }
 
                     return (
@@ -529,37 +824,42 @@ const JobsPage = () => {
 
                   return (
                     <Space>
-                      <EditButton
-                        hideText
-                        size="small"
-                        recordItemId={record.id}
-                      />
-                      <ShowButton
-                        hideText
-                        size="small"
-                        recordItemId={record.id}
-                      />
-                      <DeleteButton
-                        hideText
-                        mutationMode="optimistic"
-                        metaData={{
-                          fields: [
-                            'id'
-                          ]
-                        }}
-                        size="small"
-                        recordItemId={record.id}
-                      />
+                      {!record?.isInlineAdd && (
+                        <>
+                          <EditButton
+                            hideText
+                            size="small"
+                            recordItemId={record.id}
+                          />
+                          <ShowButton
+                            hideText
+                            size="small"
+                            recordItemId={record.id}
+                          />
+                          <DeleteButton
+                            hideText
+                            mutationMode="optimistic"
+                            metaData={{
+                              fields: [
+                                'id'
+                              ]
+                            }}
+                            size="small"
+                            recordItemId={record.id}
+                          />
+                        </>
+                      )}
                       {renderEditable()}
                     </Space>
                   )
                 }}
               />
+
             </Table>
           </Form>
         </List>
       </Col>
-    </Row>
+    </Row >
   )
 }
 
